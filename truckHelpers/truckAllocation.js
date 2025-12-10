@@ -16,7 +16,10 @@ async function allocateTrucksAndPrice({
   companyId = null,        
   segmentId = null
 }) {
-  if (!pkgs || !pkgs.length) return { status: "no-packages", message: "No packages to allocate", allocations: [] };
+  if (!pkgs || !pkgs.length) {
+    console.timeEnd('allocateTrucksTotalTime');
+    return { status: "no-packages", message: "No packages to allocate", allocations: [] };
+  }
 
   let oversizedPackages = [];
   let overweightPackages = [];

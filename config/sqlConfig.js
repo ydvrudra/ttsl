@@ -14,7 +14,7 @@ const sqlCfg = {
     enableArithAbort: true,
     trustServerCertificate: true
   },
-  pool: { max: 5, min: 1, idleTimeoutMillis: 60000,  acquireTimeoutMillis: 30000 },
+  pool: { max: 5, min: 1, idleTimeoutMillis: 30000,  acquireTimeoutMillis: 60000 },
 };
 
 const pool = new sql.ConnectionPool(sqlCfg);

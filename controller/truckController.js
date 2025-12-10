@@ -4,6 +4,15 @@ const { loadHeaderAndPackages, loadVehiclesAndCapacities } = require('../truckHe
 const { allocateTrucksAndPrice } = require('../truckHelpers/truckAllocation');
 
 async function suggestTruckForEnquiry(req, res) {
+
+   res.setTimeout(120000, () => { // 120 seconds timeout
+    console.log('⚠️ Request timeout after 120 seconds');
+    return res.status(504).json({ 
+      error: 'Gateway Timeout', 
+      message: 'Request took too long to process' 
+    });
+  });
+
   await poolConnect;
   const client = pool;
   const { 
