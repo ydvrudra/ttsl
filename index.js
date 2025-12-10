@@ -9,12 +9,11 @@ app.use(cors());
 app.use(express.json());
 
 
-app.get('/truck-suggest-api', (req, res) => {
+app.post('/truck-suggest-api', (req, res) => {
   res.json({ 
-    status: 'OK', 
+    message: 'POST request received',
     timestamp: new Date().toISOString(),
-    service: 'truck-suggestion-api',
-    node_version: process.version
+    data: req.body
   });
 });
 
@@ -23,6 +22,7 @@ app.use("/api", truckRoutes);
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
+   console.log(`📡 API: http://localhost:${port}/api/truck/suggest`);
 });
 
 
