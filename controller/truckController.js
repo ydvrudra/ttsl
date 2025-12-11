@@ -232,8 +232,12 @@ async function suggestTruckForEnquiry(req, res) {
       }
     }
 
+    console.log('API called with recordId:', recordId);
+    console.log('Response status:', result.status);
+
     // ✅ NEW: INSERT API RESPONSE TO TABLE
     if (recordId && result.status === 'success') {
+      console.log('Calling insertResponseToTable for record:', recordId);
       await insertResponseToTable(recordId, result);
     }
 
