@@ -3,6 +3,146 @@ const { sql, pool, poolConnect } = require('../config/sqlConfig'); // ✅ sql im
 const { loadHeaderAndPackages, loadVehiclesAndCapacities } = require('../truckHelpers/loadData');
 const { allocateTrucksAndPrice } = require('../truckHelpers/truckAllocation');
 
+// ✅ NEW: Insert API response into table
+async function insertResponseToTable(recordId, apiResponse) {
+    try {
+        await poolConnect;
+        
+        // Check if response has options
+        if (!apiResponse.options || !Array.isArray(apiResponse.options)) {
+            console.log(`No options to insert for record ${recordId}`);
+            return;
+        }
+        
+        // Delete old options if any
+        await pool.request()
+            .input('recordId', sql.Int, recordId)
+            .query(`
+                DELETE FROM EnquiryVehicleQuotationOption
+                WHERE EnquiryGenerationNewId = @recordId
+            `);
+        
+        // Insert each option
+        for (const option of apiResponse.options) {
+            await insertSingleOption(recordId, option);
+        }
+        
+        console.log(`✅ Inserted ${apiResponse.options.length} options for record ${recordId}`);
+        
+    } catch (error) {
+        console.error(`❌ Error inserting API response:`, error);
+    }
+}
+
+// ✅ Helper: Insert single option
+async function insertSingleOption(recordId, option) {
+    const request = pool.request();
+    
+    // Format data exactly like your example
+    const query = `
+        INSERT INTO EnquiryVehicleQuotationOption (
+            EnquiryGenerationNewId,
+            OptionName,
+            TruckDetails,
+            TotalTrucks,
+            TotalPackages,
+            TotalCBM,
+            TotalWeight,
+            Rates,
+            Currency,
+            TotalCostInINR,
+            TotalCostInUSD,
+            SuggestedTruckIds,
+            kz_CreatedUserId,
+            kz_ModifiedDateTime
+        ) VALUES (
+            @recordId,
+            @optionName,
+            @truckDetails,
+            @totalTrucks,
+            @totalPackages,
+            @totalCBM,
+            @totalWeight,
+            @rates,
+            @currency,
+            @totalCostInINR,
+            @totalCostInUSD,
+            @suggestedTruckIds,
+            @userId,
+            GETDATE()
+        )
+    `;
+    
+    // Calculate values
+    const truckDetails = formatTruckDetails(option.allocations);
+    const suggestedTruckIds = extractTruckIds(option.allocations);
+    const totalCBM = calculateTotalCBM(option.allocations);
+    const totalWeight = calculateTotalWeight(option.allocations);
+    const rates = `Rs. ${(option.totalCost || 0).toLocaleString('en-IN')}`;
+    
+    await request
+        .input('recordId', sql.Int, recordId)
+        .input('optionName', sql.VarChar, option.optionName || 'API Option')
+        .input('truckDetails', sql.VarChar, truckDetails)
+        .input('totalTrucks', sql.Int, option.totalTrucks || 1)
+        .input('totalPackages', sql.Int, option.totalPackages || 0)
+        .input('totalCBM', sql.VarChar, totalCBM)
+        .input('totalWeight', sql.VarChar, totalWeight)
+        .input('rates', sql.VarChar, rates)
+        .input('currency', sql.VarChar, option.currency || 'INR')
+        .input('totalCostInINR', sql.Numeric(18, 2), option.totalCost || 0)
+        .input('totalCostInUSD', sql.Numeric(18, 2), option.totalCost || 0)
+        .input('suggestedTruckIds', sql.VarChar, suggestedTruckIds)
+        .input('userId', sql.Int, 3)
+        .query(query);
+}
+
+// ✅ Helper functions
+function formatTruckDetails(allocations) {
+    if (!allocations) return 'From API Response';
+    
+    return allocations.map(alloc => {
+        const parts = [];
+        if (alloc.qtyItems) parts.push(`${alloc.qtyItems}pkgs`);
+        if (alloc.usedCBM) parts.push(`${alloc.usedCBM.toFixed(2)}CBM`);
+        if (alloc.usedWeightKg) parts.push(`${alloc.usedWeightKg}kg`);
+        
+        return `${alloc.truckName} (${parts.join('/')})`;
+    }).join(', ');
+}
+
+function extractTruckIds(allocations) {
+    if (!allocations) return '';
+    
+    const ids = [];
+    allocations.forEach(alloc => {
+        const count = alloc.truckCount || 1;
+        for (let i = 0; i < count; i++) {
+            ids.push(alloc.truckId);
+        }
+    });
+    
+    return [...new Set(ids)].join(',');
+}
+
+function calculateTotalCBM(allocations) {
+    if (!allocations) return '0 (0)';
+    
+    const total = allocations.reduce((sum, alloc) => sum + (alloc.usedCBM || 0), 0);
+    const perTruck = allocations.length > 0 ? total / allocations.length : 0;
+    
+    return `${total.toFixed(2)} (${perTruck.toFixed(2)})`;
+}
+
+function calculateTotalWeight(allocations) {
+    if (!allocations) return '0 (0)';
+    
+    const total = allocations.reduce((sum, alloc) => sum + (alloc.usedWeightKg || 0), 0);
+    const perTruck = allocations.length > 0 ? total / allocations.length : 0;
+    
+    return `${total} (${perTruck})`;
+}
+
 async function suggestTruckForEnquiry(req, res) {
 
    res.setTimeout(120000, () => { // 120 seconds timeout
@@ -90,6 +230,11 @@ async function suggestTruckForEnquiry(req, res) {
         console.error('Stack:', updateError.stack);
         console.error('Record ID:', recordId);
       }
+    }
+
+    // ✅ NEW: INSERT API RESPONSE TO TABLE
+    if (recordId && result.status === 'success') {
+      await insertResponseToTable(recordId, result);
     }
 
     return res.status(200).json(result);
