@@ -42,6 +42,7 @@ async function insertSingleOption(recordId, option) {
     const query = `
         INSERT INTO EnquiryVehicleQuotationOption (
             EnquiryGenerationNewId,
+            EnquiryDimensionsHdrId,
             OptionName,
             TruckDetails,
             TotalTrucks,
@@ -56,6 +57,7 @@ async function insertSingleOption(recordId, option) {
             kz_CreatedUserId,
             kz_ModifiedDateTime
         ) VALUES (
+            @recordId,
             @recordId,
             @optionName,
             @truckDetails,
