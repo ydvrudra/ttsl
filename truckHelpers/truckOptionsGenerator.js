@@ -1,5 +1,7 @@
 // truckHelpers/truckOptionsGenerator.js - COMPLETELY DYNAMIC
 const Simple3DSpace = require('./Simple3DSpace');
+const { AppError, ErrorTypes } = require('../utils/errorHandler'); 
+
 
 class TruckOptionsGenerator {
   constructor(vehicles, truckRatesMap) {
@@ -9,6 +11,20 @@ class TruckOptionsGenerator {
 
   // Main method to generate ALL possible options dynamically
   async generateOptions(items, currentAllocation) {
+
+     if (!items || !Array.isArray(items) || items.length === 0) {
+    throw new AppError(
+      ErrorTypes.VALIDATION.NO_PACKAGES,
+      'Items array is required for generating options'
+    );
+  }
+
+  if (!this.vehicles || !Array.isArray(this.vehicles) || this.vehicles.length === 0) {
+    throw new AppError(
+      ErrorTypes.VALIDATION.NO_VEHICLES,
+      'No vehicles available for generating options'
+    );
+  }
     const options = [];
     const totalPackages = items.reduce((sum, item) => sum + item.qty, 0);
 
@@ -369,7 +385,7 @@ getCurrencySymbol(currencyCode) {
       
       return totalCapacity;
     } catch (error) {
-      console.error(`Error calculating capacity for ${truck.truckName}:`, error);
+      console.error(`Error calculating capacity for ${truck.truckName}:`, error.message);
       return 0;
     }
   }

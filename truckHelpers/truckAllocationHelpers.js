@@ -14,7 +14,9 @@ async function getDefaultCurrency(client) {
     const result = await client.request().query(query);
     return result.recordset[0]?.CurrencyCode || 'INR';
   } catch (error) {
-    return 'INR';
+    // ✅ UPDATE THIS CATCH BLOCK
+    console.warn('⚠️ Could not fetch default currency, using INR:', error.message);
+    return 'INR'; 
   }
 }
 
@@ -25,6 +27,21 @@ async function processFinalAllocations({
   vehicles = [] ,
   truckRatesMap = {} 
 }) {
+   try {
+   if (!client) {
+    throw new AppError(
+      ErrorTypes.SYSTEM.UNKNOWN_ERROR,
+      'Database client is required for processFinalAllocations'
+    );
+  }
+
+
+   if (!Array.isArray(allocationsInstances)) {
+    throw new AppError(
+      ErrorTypes.API.INVALID_RESPONSE,
+      'allocationsInstances must be an array'
+    );
+  }
   // ✅ Safety defaults
   remainingPkgs = Array.isArray(remainingPkgs) ? remainingPkgs : [];
 
@@ -75,6 +92,7 @@ async function processFinalAllocations({
   for (const inst of allocationsInstances) {
     const truckInfo = vehicles.find(v => v.truckId === inst.truckId);
     if (truckInfo && (inst.usedWeight > truckInfo.maxWeightKg || inst.usedCBM > truckInfo.cbmCapacity)) {
+
       const allocationsStatus = {
         status: 'invalid-allocation',
         message: `Truck ${truckInfo.truckName} overloaded`,
@@ -113,5 +131,17 @@ async function processFinalAllocations({
 
   return { allocationsStatus };
 }
+catch (error) {
+    // ✅ If already AppError, re-throw it
+    if (error instanceof AppError) {
+      throw error;
+    }
 
+    console.error('🔴 Error in processFinalAllocations:', error);
+    throw new AppError(
+      ErrorTypes.SYSTEM.UNKNOWN_ERROR,
+      `Final allocation processing failed: ${error.message}`
+    );
+  }
+}
 module.exports = { processFinalAllocations };

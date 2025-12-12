@@ -1,4 +1,6 @@
 const { sql } = require('../config/sqlConfig');
+const { AppError, ErrorTypes } = require('../utils/errorHandler'); // ✅ ADD THIS LINE
+
 
 class TruckRateCalculator {
   constructor(client) {
@@ -206,6 +208,21 @@ const defaultCurrencyId = 10;
 
   // 3. Get rates for MULTIPLE trucks
   async getRatesForTrucks(truckIds, fromLocationId, toLocationId, companyId, segmentId) {
+
+    if (!truckIds || !Array.isArray(truckIds) || truckIds.length === 0) {
+    throw new AppError(
+      ErrorTypes.VALIDATION.INVALID_INPUT,
+      'truckIds array is required and cannot be empty'
+    );
+  }
+
+  if (!fromLocationId || !toLocationId) {
+    throw new AppError(
+      ErrorTypes.VALIDATION.INVALID_INPUT,
+      'fromLocationId and toLocationId are required'
+    );
+  }
+
     const rates = [];
     
     for (const truckId of truckIds) {
