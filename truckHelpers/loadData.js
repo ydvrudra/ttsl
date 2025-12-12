@@ -1,5 +1,5 @@
-// truckHelpers/loadData.js
 const { sql } = require('../config/sqlConfig');
+const { AppError, ErrorTypes } = require('../utils/errorHandler'); // ✅ ADD THIS LINE
 
 // --- Auto CBM Calculator ---
 function calculateCBM(lengthFt, widthFt, heightFt) {
@@ -12,6 +12,7 @@ function calculateCBM(lengthFt, widthFt, heightFt) {
   const cbm = (l * w * h) / 35.3147;
   return Number(cbm.toFixed(6));
 }
+
 // --- Unit Conversion ---
 function unitToFeet(value, unitId) {
   if (value == null) return 0;
@@ -24,6 +25,7 @@ function unitToFeet(value, unitId) {
     default: return value;
   }
 }
+
 // --- 1) Load ONLY necessary header and packages ---
 async function loadHeaderAndPackages(client, recordId, bodyPackages, calculationUnitId) {
   let hdr = { CalculationUnitId: calculationUnitId }; // ✅ Form se aayega
@@ -35,11 +37,20 @@ async function loadHeaderAndPackages(client, recordId, bodyPackages, calculation
       .input('RecordId', sql.Int, recordId)
       .query(`
         SELECT TOP 1 CalculationUnitId
-        FROM EnquiryGenerationNew
-        WHERE EnquiryGenerationNewId = @RecordId
+        FROM EnquiryDimensionsHdr
+        WHERE EnquiryDimensionsHdrId = @RecordId
       `);
     
-    if (!hdrRs.recordset.length) throw new Error('Enquiry not found');
+    // ✅ CHANGE 1: REPLACE THIS ERROR
+    // BEFORE: if (!hdrRs.recordset.length) throw new Error('Enquiry not found');
+    // AFTER:
+    if (!hdrRs.recordset.length) {
+      throw new AppError(
+        ErrorTypes.VALIDATION.RECORD_NOT_FOUND,
+        `RecordId ${recordId} not found in EnquiryDimensionsHdr`
+      );
+    }
+    
     hdr.CalculationUnitId = hdrRs.recordset[0].CalculationUnitId;
 
     // ✅ Load packages
@@ -55,7 +66,7 @@ async function loadHeaderAndPackages(client, recordId, bodyPackages, calculation
           cTotalPackageWeight,
           ChildstackableId
         FROM EnquiryDimensionsDetails
-        WHERE EnquiryGenerationNewId = @RecordId
+        WHERE EnquiryDimensionsHdrId = @RecordId
       `);
 
     pkgRows = cargoRs.recordset || [];
@@ -63,8 +74,13 @@ async function loadHeaderAndPackages(client, recordId, bodyPackages, calculation
 
   } else {
     // ✅ Direct from body packages
-    if (!Array.isArray(bodyPackages) || bodyPackages.length === 0)
-      throw new Error('Either recordId or packages array required');
+    if (!Array.isArray(bodyPackages) || bodyPackages.length === 0) {
+      // ✅ CHANGE 2: ADD THIS VALIDATION
+      throw new AppError(
+        ErrorTypes.VALIDATION.NO_PACKAGES,
+        'Either recordId or packages array required, but both are empty'
+      );
+    }
 
     pkgRows = bodyPackages.map((p, idx) => ({
       EnquiryDimensionsDetailsId: p.pkgId || idx + 1,
@@ -79,7 +95,7 @@ async function loadHeaderAndPackages(client, recordId, bodyPackages, calculation
     hdr.CalculationUnitId = calculationUnitId; // ✅ Form se aaya hua
   }
 
-  // ✅ Clean package mapping
+  // ✅ Clean package mapping (same as before)
   const pkgs = pkgRows.map(r => {
     const qty = Number(r.cNoofPackages || 1);
     
@@ -106,7 +122,6 @@ async function loadHeaderAndPackages(client, recordId, bodyPackages, calculation
 
   return { hdr, pkgs };
 }
-
 
 // --- 2) Load ONLY necessary vehicle data ---
 
@@ -138,6 +153,14 @@ async function loadVehiclesAndCapacities(client) {
 
   const result = await client.request().query(query);
   const vehiclesRaw = result.recordset || [];
+
+  // ✅ CHANGE 3: ADD VEHICLE VALIDATION (You already did this part)
+  if (!vehiclesRaw.length) {
+    throw new AppError(
+      ErrorTypes.VALIDATION.NO_VEHICLES,
+      'VehicleTypeMaster table has no records'
+    );
+  }
 
   // ✅ Usable dimensions
   const CLEAR_L = 0.25, CLEAR_W = 0.25, CLEAR_H = 0.25;

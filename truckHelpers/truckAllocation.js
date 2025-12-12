@@ -3,6 +3,8 @@ const { processFinalAllocations } = require('./truckAllocationHelpers');
 const Simple3DSpace = require('./Simple3DSpace');
 const { tryAllocationStrategy } = require('./AllocationStrategy');
 const TruckOptionsGenerator = require('./truckOptionsGenerator');
+const { AppError, ErrorTypes } = require('../utils/errorHandler'); // ✅ ADD THIS LINE
+
 
 async function allocateTrucksAndPrice({
   client,
@@ -13,10 +15,20 @@ async function allocateTrucksAndPrice({
   companyId = null,        
   segmentId = null
 }) {
-  if (!pkgs || !pkgs.length) {
-    console.timeEnd('allocateTrucksTotalTime');
-    return { status: "no-packages", message: "No packages to allocate", allocations: [] };
-  }
+    try {
+      if (!pkgs || !pkgs.length) {
+        throw new AppError(
+          ErrorTypes.VALIDATION.NO_PACKAGES,
+          'allocateTrucksAndPrice called with empty packages'
+        );
+      }
+
+      if (!vehicles || !vehicles.length) {
+        throw new AppError(
+          ErrorTypes.VALIDATION.NO_VEHICLES,
+          'allocateTrucksAndPrice called with empty vehicles'
+        );
+      }
 
   let oversizedPackages = [];
   let overweightPackages = [];
@@ -313,6 +325,22 @@ return {
   // ✅ OLD FORMAT (for SQL procedure - MUST HAVE!)
   allocations: formatAllocationsForProcedure(firstOption)
 };
+}
+
+catch (error) {
+    // ✅ STEP 5: CATCH BLOCK (CHANGE 4)
+    // If already AppError, re-throw it
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+ console.error('🔴 Error in allocateTrucksAndPrice:', error);
+
+  throw new AppError(
+      ErrorTypes.API.ALLOCATION_FAILED,
+      `Truck allocation failed: ${error.message}`
+    );
+  }
 }
 
 // Helper functions
