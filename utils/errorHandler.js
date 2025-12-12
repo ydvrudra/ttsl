@@ -36,7 +36,14 @@ const ErrorTypes = {
 // ✅ USER-FRIENDLY MESSAGES
 const ErrorMessages = {
     // VALIDATION MESSAGES
-
+    'OVERSIZED_PACKAGE': {
+        userMessage: '⚠️ Some packages are too large for available trucks. Please check dimensions.',
+        httpCode: 400
+    },
+    'INVALID_DIMENSIONS': {
+        userMessage: '⚠️ Some packages have invalid dimensions (zero or negative values).',
+        httpCode: 400
+    },
     
     'NO_PACKAGES': {
         userMessage: '❌ Please add at least one package to calculate truck requirements.',

@@ -1,5 +1,7 @@
 // truckHelpers/truckAllocationHelpers.js
 const { sql } = require('../config/sqlConfig');
+const { AppError, ErrorTypes } = require('../utils/errorHandler'); // ✅ ADD THIS LINE
+
 
 // Helper function to get default currency
 async function getDefaultCurrency(client) {

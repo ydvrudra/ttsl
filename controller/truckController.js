@@ -1,5 +1,5 @@
 // controllers/truckController.js
-const { poolConnect } = require('../config/sqlConfig');
+const {pool, poolConnect } = require('../config/sqlConfig');
 const { loadHeaderAndPackages, loadVehiclesAndCapacities } = require('../truckHelpers/loadData');
 const { allocateTrucksAndPrice } = require('../truckHelpers/truckAllocation');
 const InsertService = require('../truckHelpers/insertTrcukData');

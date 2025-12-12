@@ -108,6 +108,21 @@ async function allocateTrucksAndPrice({
                `Invalid dimensions`
       });
       isValid = false;
+
+       // ✅ THROW ERROR IMMEDIATELY IF ANY PACKAGE IS OVERSIZED
+  if (maxDimension > maxTruckLength) {
+    throw new AppError(
+      ErrorTypes.PACKAGE_VALIDATION.OVERSIZED_PACKAGE,
+      `Package ${pkg.pkgId}: ${maxDimension}ft > max truck ${maxTruckLength}ft`
+    );
+  }
+
+   if (minDimension <= 0) {
+    throw new AppError(
+      ErrorTypes.PACKAGE_VALIDATION.INVALID_DIMENSIONS,
+      `Package ${pkg.pkgId}: has zero/negative dimension`
+    );
+  }
     }
 
     if (isValid) {
